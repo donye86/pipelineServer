@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns="http://www.springframework.org/schema/beans"
+       xmlns:mvc="http://www.springframework.org/schema/mvc" 
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd 
+            http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+    <mvc:annotation-driven validator="beansValidator" conversion-service="conversionService" enable-matrix-variables="true"/>
+
+    <context:property-placeholder ignore-unresolvable="true" location="classpath:config.properties" />
+
+    <context:component-scan base-package="com.rym.api.controller">
+        <context:include-filter type="annotation" expression="org.springframework.web.bind.annotation.RestController"/>
+        <context:include-filter type="annotation" expression="org.springframework.web.bind.annotation.RestControllerAdvice"/>
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Service"/>
+    </context:component-scan>
+    
+    <bean id="beansValidator" class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean">
+        <property name="providerClass" value="org.hibernate.validator.HibernateValidator"/>
+    </bean>
+
+    <bean id="conversionService" class="org.springframework.format.support.FormattingConversionServiceFactoryBean"/>
+
+    <bean id="webBindingInitializer" class="org.springframework.web.bind.support.ConfigurableWebBindingInitializer">
+        <property name="validator" ref="beansValidator"/>
+        <property name="conversionService" ref="conversionService"/>
+    </bean>
+
+    <bean id="contentNegotiationManager" class="org.springframework.web.accept.ContentNegotiationManagerFactoryBean">
+        <property name="favorPathExtension" value="true" />
+        <property name="favorParameter" value="false" />
+        <property name="ignoreAcceptHeader" value="false" />
+        <property name="defaultContentType" value="application/json;charset=UTF-8" />
+        <property name="useJaf" value="false" />
+        <property name="mediaTypes">
+            <value>
+                json=application/json
+            </value>
+        </property>
+    </bean>
+
+    <bean class="org.springframework.web.servlet.view.ContentNegotiatingViewResolver">
+        <property name="order" value="1" />
+        <property name="contentNegotiationManager" ref="contentNegotiationManager" />
+        <property name="defaultViews">
+            <list>
+                <bean class="org.springframework.web.servlet.view.json.MappingJackson2JsonView" />
+            </list>
+        </property>
+        <property name="viewResolvers">
+            <list>
+                <bean class="org.springframework.web.servlet.view.BeanNameViewResolver" />
+            </list>
+        </property>
+    </bean>
+
+    <mvc:annotation-driven content-negotiation-manager="contentNegotiationManager"/>
+    <mvc:default-servlet-handler />
+
+    <!-- Swagger资源重定向，直接访问http://IP:port/{context-path}/swagger-ui.html  #/ 即可查看API接口列表 -->
+    <mvc:resources location="classpath:/META-INF/resources/" mapping="swagger-ui.html" cache-period="31556926" />
+    <mvc:resources location="classpath:/META-INF/resources/webjars/" mapping="/webjars/**" cache-period="31556926" />
+    
+    <bean id="swagger2Config" class="springfox.documentation.swagger2.configuration.Swagger2DocumentationConfiguration"/>
+    <bean id="docket" class="com.rym.api.config.CustomDocket">
+        <constructor-arg name="enableSwagger" value="${swagger.plugin.enable}"/>
+        <constructor-arg name="host" value="${swagger.ui.host}"/>
+    </bean>
+
+    <aop:aspectj-autoproxy expose-proxy="true" proxy-target-class="true"/>
+</beans>
