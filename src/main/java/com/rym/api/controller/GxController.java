@@ -12,7 +12,7 @@ import com.rym.api.response.ServerDataResponse;
 import com.rym.api.response.ServerResponse;
 import com.rym.module.biz.error.ValidationException;
 import com.rym.protocol.PipeLineProtocol;
-import com.rym.server.util.SocketUtil;
+import com.rym.server.util.PipeLineUtil;
 import com.rym.stack.ClientKeepStack;
 
 @RestController
@@ -26,9 +26,9 @@ public class GxController {
 			StringBuffer command = new StringBuffer();
 			command.append(machineSn).append(PipeLineProtocol.regex)
 			.append(code).append(PipeLineProtocol.regex)
-			.append(cmdParams).append(PipeLineProtocol.regex);
+			.append(cmdParams);
 			try {
-				SocketUtil.send(command.toString(), client);
+				PipeLineUtil.send(command.toString(), client);
 			} catch (IOException e) {
 				return new ServerResponse(new ValidationException(1001, "指令错误"));
 			}

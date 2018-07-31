@@ -9,6 +9,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClientKeepStack {
 	//储存设备的连接套接字
 	public static Map<String, Socket> devClientStack=new ConcurrentHashMap<>();
+	//设备状态
+	public static Map<String, Integer> devState = new ConcurrentHashMap<>();
+	
+	//设置设备状态
+	public static void setState(String clientKey,Integer state) {
+		devState.put(clientKey, state);
+	}
+	
+	//获取设备状态
+	public static Integer getState(String clientKey) {
+		return devState.get(clientKey);
+	}
+	
 	//获取连接
 	public static Socket client(String devCode) {
 		Socket client = devClientStack.get(devCode);

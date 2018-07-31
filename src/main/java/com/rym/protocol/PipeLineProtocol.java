@@ -2,12 +2,11 @@ package com.rym.protocol;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.Arrays;
 
-import com.rym.server.util.SocketUtil;
+import com.rym.server.util.PipeLineUtil;
 import com.rym.stack.ClientKeepStack;
 
 import lombok.extern.log4j.Log4j2;
@@ -59,7 +58,6 @@ public class PipeLineProtocol  implements Runnable{
 	public void run() {
 		while (true) {
 			InputStream input = null;
-			OutputStream out = null;
 			try {
 				// 读取客户端数据
 				input = client.getInputStream();
@@ -72,6 +70,7 @@ public class PipeLineProtocol  implements Runnable{
 						builder.append(new String(buff, 0,len));
 						// 处理客户端数据
 						String mess=builder.toString();
+						log.info("设备<{}>响应：{}",clientKey,mess);
 						if(!validProtocol(mess)) {
 							closeClient();
 							log.error("非法连接，自动退出，client {}",client.getInetAddress().getHostAddress());
@@ -82,27 +81,33 @@ public class PipeLineProtocol  implements Runnable{
 								if(ms.length>0) {
 									String devCode = ms[0];
 									if(clientKey!=null&&!devCode.equals(clientKey)) {
-										log.info("当前连接由[{}]切换成[{}]",clientKey,devCode);
+										log.info("当前连接由<{}>切换成<{}>",clientKey,devCode);
 										ClientKeepStack.removeOne(clientKey);
 									}
 									clientKey = devCode;
 									ClientKeepStack.newOne(devCode, client);
 									if(ms.length==1) {//心跳
-										log.info("设备[{}]连接正常，当前连接设备数量：{}",clientKey,ClientKeepStack.getClientSize());
-										SocketUtil.send(null,client);
-									}else {
-										log.info("设备响应：{}",mess);
+										log.info("设备<{}>连接正常，当前连接设备数量：{}",clientKey,ClientKeepStack.getClientSize());
+										PipeLineUtil.send(null,client);
+									}else {//处理相关业务
 										String cmdCode = ms[1];
 										if(!validCode(cmdCode)) {
 											closeClient();
 											log.error("非法上行控制码，自动退出，client {}",client.getInetAddress().getHostAddress());
+										}
+										if(cmdCode.equals("63")) {//订单上报
+											StringBuffer command = new StringBuffer();
+											command.append(devCode).append(PipeLineProtocol.regex)
+											.append("64").append(PipeLineProtocol.regex)
+											.append(ms[2]);
+											PipeLineUtil.send(command.toString(),client);
 										}
 									}
 								}
 								NH=0;
 							}else {
 								NH++;
-								SocketUtil.send(null,client);
+								PipeLineUtil.send(null,client);
 								if(NH>MAX_NH) {
 									closeClient();
 									log.info("连续空心跳超过{}次，自动断开连接，client {}",MAX_NH,client.getInetAddress().getHostAddress());
@@ -111,7 +116,7 @@ public class PipeLineProtocol  implements Runnable{
 						}
 					}else {
 						closeClient();
-						log.info("客户端断开连接");
+						log.info("客户端断开连接，client {}",client.getInetAddress().getHostAddress());
 						return;
 					}
 				}
@@ -120,8 +125,6 @@ public class PipeLineProtocol  implements Runnable{
 				ClientKeepStack.removeOne(clientKey);
 				if (!client.isClosed()) {
 					try {
-						if(out!=null)
-							out.close();
 						if(input!=null)
 							input.close();
 					} catch (IOException e1) {
